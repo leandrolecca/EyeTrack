@@ -8,7 +8,7 @@ From the x-y gaze position of a trial, EyeTrack provides event information about
 * VFAC: velocity threshold function
 * SAMPLING: sampling rate at which signal was collected in Hertz
 * blink.threshold: minimum duration of a blink in ms
-* blink.window: window to remove around the blinks in ms
+* blink.window: time window to remove around the blinks in ms
 
 ``` r
 MINDUR <- 10
@@ -79,9 +79,11 @@ Running the toolbox requires to give specific column names to the “etr.db” d
 * rxdeg: right eye x position in degs
 * rydeg: right eye y position in degs
 * TRIAL_INDEX: int number for the trial
-* SAMPLE_MESSAGE: unique message for the trial (e.g., information about the trial)
+* RECORDING_SESSION_LABEL: label for the trial
 * subID: label of the subject
 
-This data can be taken from the .edf files that EyeLink saves after running your task script. To do this, open the .edf file with [DataViewer](https://www.sr-research.com/data-viewer/) and save an Excel file in which you select the variables to be exported under Analysis -> Report -> Sample report. The main variables to export are TRIAL_INDEX, SAMPLE_MESSAGE, LEFT_GAZE_X, LEFT_GAZE_Y, RIGHT_GAZE_X and RIGHT_GAZE_Y. Since the left and right gaze are in pixels, they need to be converted to visual angles and then the variables renamed to lxdeg and lydeg for the left eye. The same applies to the right eye, i.e., rxdeg and rydeg.
+This data can be taken from the .edf files that EyeLink saves after running your task script. To do this, open the .edf file with [DataViewer](https://www.sr-research.com/data-viewer/) and save an Excel file in which you select the variables to be exported under Analysis -> Report -> Sample report. The main variables to select are RECORDING_SESSION_LABEL, TRIAL_INDEX, SAMPLE_MESSAGE, LEFT_GAZE_X, LEFT_GAZE_Y, RIGHT_GAZE_X and RIGHT_GAZE_Y. Since the left and right gaze are in pixels, they need to be converted to visual angles and then the variables renamed to lxdeg and lydeg for the left eye. The same applies to the right eye, i.e., rxdeg and rydeg. Finally, in the column RECORDING_SESSION_LABEL there must be a unique label for each trial, which should be extracted afterwards from the SAMPLE_MESSAGE, as it should contain information about the trial at the right (this is programmed by the user when building the stimuli presentation script, in PsychToolbox with *Eyelink('Message', 'Your message: %s',images{i})*).
+
+: unique message for the trial (e.g., information about the trial)
 
 
