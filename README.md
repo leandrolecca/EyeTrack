@@ -21,10 +21,8 @@ blink.window <- 100
 The for loop passes through each participant along the *etr.db*. This loop can be more complex, such as including different VFAC levels, runs or conditions, but ensure that a subset of trials is sent to the **run.participant()** function and the iterative information is stored in the *result.db* variable. Upon completion, the results should be visually examined to roughly assess the quality of the analysis (see [EyeTrack Visualizer](#eyetrack-visualizer)).
 
 ``` r
-SUBJ<-c("sub001","sub002","sub003",
-        "sub004","sub005","sub006",
-        "sub007","sub008","sub009")
-        
+SUBJ <- c("subS01","subS02")
+
 # define an empty list to save the summary, fixations, saccades and blinks
 #-------------------------------------------------------------------------------
 result.db <- list(summary=c(),fixations=c(),blinks=c(),saccades=c())
@@ -84,4 +82,6 @@ Running the toolbox requires to give specific column names to the “etr.db” d
 * SAMPLE_MESSAGE: unique message for the trial (e.g., information about the trial)
 * subID: label of the subject
 
-This data can be taken from the .edf files that EyeLink saves after running your task script. To do this, open the .edf file with [DataViewer](https://www.sr-research.com/data-viewer/) and save an Excel file in which you select the variables to be exported under Analysis -> Report -> Sample report. The main variables to export are TRIAL_INDEX, SAMPLE_MESSAGE, LEFT_GAZE_X, LEFT_GAZE_Y, RIGHT_GAZE_X and RIGHT_GAZE_Y. Since the left and right gaze are in pixels, they need to be converted to visual angles () and then the variables renamed to lxdeg and lydeg for the left eye. The same applies to the right eye, i.e., rxdeg and rydeg.
+This data can be taken from the .edf files that EyeLink saves after running your task script. To do this, open the .edf file with [DataViewer](https://www.sr-research.com/data-viewer/) and save an Excel file in which you select the variables to be exported under Analysis -> Report -> Sample report. The main variables to export are TRIAL_INDEX, SAMPLE_MESSAGE, LEFT_GAZE_X, LEFT_GAZE_Y, RIGHT_GAZE_X and RIGHT_GAZE_Y. Since the left and right gaze are in pixels, they need to be converted to visual angles and then the variables renamed to lxdeg and lydeg for the left eye. The same applies to the right eye, i.e., rxdeg and rydeg.
+
+
