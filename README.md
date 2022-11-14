@@ -18,7 +18,7 @@ blink.threshold <- 20
 blink.window <- 100
 ```
 
-The for loop passes through each participant along the *etr.db*. This loop can be more complex, such as including different VFAC levels, runs or conditions, but ensure that a subset of trials is sent to the **run.participant()** function and the iterative information is stored in the *result.db* variable. Upon completion, the results should be visually examined to roughly assess the quality of the analysis (see [EyeTrack Visualizer](#eyetrack-visualizer)).
+The for loop passes through each participant along the *etr.db*. This loop can be more complex, such as including different VFAC levels, runs or conditions, but ensure that a subset of trials is sent to the **run.participant()** function and the iterative information is stored in the *result.db* variable. Upon completion, the results should be visually examined to roughly assess the quality of the analysis (see [EyeTrack Visualizer](#eyetrack-visualizer)). Here is the dataset to run the code sample below.
 
 ``` r
 SUBJ <- c("subS01","subS02")
@@ -82,7 +82,7 @@ Running the toolbox requires to give specific column names to the “etr.db” d
 * RECORDING_SESSION_LABEL: label for the trial
 * subID: label of the subject
 
-This data can be taken from the .edf files that EyeLink saves after running your task script. To do this, open the .edf file with [DataViewer](https://www.sr-research.com/data-viewer/) and save an Excel file in which you select the variables to be exported under Analysis -> Report -> Sample report. The main variables to export are RECORDING_SESSION_LABEL, TRIAL_INDEX, SAMPLE_MESSAGE, LEFT_GAZE_X, LEFT_GAZE_Y, RIGHT_GAZE_X and RIGHT_GAZE_Y. Since the left and right gaze are in pixels, they must be converted to visual angles and then renamed to lxdeg and lydeg for the left eye and rxdeg and rydeg for the right eye, corresponding to the X-Y components. Finally, the column RECORDING_SESSION_LABEL must contain a unique label for each trial, which must then be extracted from the SAMPLE_MESSAGE, as it must contain specific information about the trial at the correct time (this is programmed by the user when building the stimuli presentation script, e.g., in PsychToolbox with *Eyelink('Message', 'Your message')* command). See [here](#sample) a 10 ms sample
+This data can be taken from the .edf files that EyeLink saves after running your task script. To do this, open the .edf file with [DataViewer](https://www.sr-research.com/data-viewer/) and save an Excel file in which you select the variables to be exported under Analysis -> Report -> Sample report. The main variables to export are RECORDING_SESSION_LABEL, TRIAL_INDEX, SAMPLE_MESSAGE, LEFT_GAZE_X, LEFT_GAZE_Y, RIGHT_GAZE_X and RIGHT_GAZE_Y. Since the left and right gaze are in pixels, they must be converted to visual angles and then renamed to lxdeg and lydeg for the left eye and rxdeg and rydeg for the right eye, corresponding to the X-Y components. Finally, the column RECORDING_SESSION_LABEL must contain a unique label for each trial, which must then be extracted from the SAMPLE_MESSAGE, as it must contain specific information about the trial at the correct time (this is programmed by the user when building the stimuli presentation script, e.g., in PsychToolbox with *Eyelink('Message', 'Your message')* command). See [here](#sample) a 10 ms sample.
 
 ### Sample
 ```
