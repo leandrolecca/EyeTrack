@@ -82,8 +82,21 @@ Running the toolbox requires to give specific column names to the “etr.db” d
 * RECORDING_SESSION_LABEL: label for the trial
 * subID: label of the subject
 
-This data can be taken from the .edf files that EyeLink saves after running your task script. To do this, open the .edf file with [DataViewer](https://www.sr-research.com/data-viewer/) and save an Excel file in which you select the variables to be exported under Analysis -> Report -> Sample report. The main variables to select are RECORDING_SESSION_LABEL, TRIAL_INDEX, SAMPLE_MESSAGE, LEFT_GAZE_X, LEFT_GAZE_Y, RIGHT_GAZE_X and RIGHT_GAZE_Y. Since the left and right gaze are in pixels, they need to be converted to visual angles and then the variables renamed to lxdeg and lydeg for the left eye. The same applies to the right eye, i.e., rxdeg and rydeg. Finally, the column RECORDING_SESSION_LABEL must contain a unique label for each trial, which must then be extracted from the SAMPLE_MESSAGE, as it must contain specific information about the trial at the correct time (this is programmed by the user when building the stimuli presentation script, e.g., in PsychToolbox with *Eyelink('Message', 'Your message')* command).
+This data can be taken from the .edf files that EyeLink saves after running your task script. To do this, open the .edf file with [DataViewer](https://www.sr-research.com/data-viewer/) and save an Excel file in which you select the variables to be exported under Analysis -> Report -> Sample report. The main variables to export are RECORDING_SESSION_LABEL, TRIAL_INDEX, SAMPLE_MESSAGE, LEFT_GAZE_X, LEFT_GAZE_Y, RIGHT_GAZE_X and RIGHT_GAZE_Y. Since the left and right gaze are in pixels, they must be converted to visual angles and then renamed to lxdeg and lydeg for the left eye and rxdeg and rydeg for the right eye, corresponding to the X-Y components. Finally, the column RECORDING_SESSION_LABEL must contain a unique label for each trial, which must then be extracted from the SAMPLE_MESSAGE, as it must contain specific information about the trial at the correct time (this is programmed by the user when building the stimuli presentation script, e.g., in PsychToolbox with *Eyelink('Message', 'Your message')* command). See [here](#sample) a 10 ms sample
 
-: unique message for the trial (e.g., information about the trial)
-
-
+### Sample
+```
+        subID	RECORDING_SESSION_LABEL	                                TRIAL_INDEX	    lxdeg       lydeg           rxdeg           rydeg
+6000000	subS02	58_seq2_HML_L_run6_Q3_right_x=-3.2361º_y=-2.3511º.png	    1018	    -0.1586261	0.4833037	-0.0029375	0.2354599
+6000001	subS02	58_seq2_HML_L_run6_Q3_right_x=-3.2361º_y=-2.3511º.png	    1018	    -0.1630324	0.4874343	-0.0029375	0.2327060
+6000002	subS02	58_seq2_HML_L_run6_Q3_right_x=-3.2361º_y=-2.3511º.png	    1018	    -0.1645011	0.4956954	-0.0029375	0.2299521
+6000003	subS02	58_seq2_HML_L_run6_Q3_right_x=-3.2361º_y=-2.3511º.png	    1018	    -0.1615636	0.5163483	 0.0220315	0.2258213
+6000004	subS02	58_seq2_HML_L_run6_Q3_right_x=-3.2361º_y=-2.3511º.png	    1018	    -0.1512823	0.5328705	 0.0484692	0.2230674
+6000005	subS02	58_seq2_HML_L_run6_Q3_right_x=-3.2361º_y=-2.3511º.png	    1018	    -0.1410010	0.5480158	 0.0514067	0.2216904
+6000006	subS02	58_seq2_HML_L_run6_Q3_right_x=-3.2361º_y=-2.3511º.png	    1018	    -0.1615636	0.5604073	 0.0264377	0.2203135
+6000007	subS02	58_seq2_HML_L_run6_Q3_right_x=-3.2361º_y=-2.3511º.png	    1018	    -0.1880011	0.5700452	 0.0088126	0.2161827
+6000008	subS02	58_seq2_HML_L_run6_Q3_right_x=-3.2361º_y=-2.3511º.png	    1018	    -0.2217822	0.5590305	 0.0132189	0.2024132
+6000009	subS02	58_seq2_HML_L_run6_Q3_right_x=-3.2361º_y=-2.3511º.png	    1018	    -0.2276572	0.5383779	 0.0146876	0.1776281
+6000010	subS02	58_seq2_HML_L_run6_Q3_right_x=-3.2361º_y=-2.3511º.png	    1018	    -0.2203135	0.5177252	 0.0117501	0.1555968
+...
+```
