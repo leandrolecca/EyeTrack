@@ -5,7 +5,7 @@ EyeTrack is an R-based toolbox intended to facilitate research analysis of eyetr
 Based on the x-y gaze position of a trial, EyeTrack provides event information about saccades, blinks and fixations taking place. In the main.md notebook there is an example of how to run the toolbox after giving a minimal structure format to the eyetracking data, aka *etr.db* (see [DataFrame Structure](#dataframe-structure)). Before, the user must provide a set of parameters to make work the detection, which are:
 
 * MINDUR: minimum duration of a saccade, in millisecons (ms)
-* VFAC: velocity threshold function
+* VFAC: velocity threshold
 * SAMPLING: sampling rate at which signal was collected in Hertz
 * blink.threshold: minimum duration of a blink in ms
 * blink.window: time window to remove around the blinks in ms
