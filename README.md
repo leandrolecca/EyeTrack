@@ -65,7 +65,7 @@ plt.trial$plt.analysis
 ```
 ### Before and after EyeTrack performance
 <p align="center">
-  <img width="1200" hegiht="450" src="https://github.com/leandrolecca/eyetrackdev/blob/main/raw-analysisV3.gif">
+  <img width="1200" hegiht="450" src="https://github.com/leandrolecca/eyetrackdev/blob/main/raw-analysis.gif">
 </p>
 
 ## Pipeline architecture
