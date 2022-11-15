@@ -73,7 +73,7 @@ The workflow between [core functions](#core-functions-information) is depicted b
 </p>
 
 ## Core functions information
-The core functions can be edited or even new functions can be added with different detection heuristics as long as they adhere to the output structure (see full code in eyetrack_toolbox.R).
+The core functions can be edited or even new functions can be added with different detection heuristics as long as they adhere to the output structure (see full code in [eyetrack_toolbox.R](https://github.com/leandrolecca/eyetrackdev/blob/main/eyetrack_toolbox.R)).
 
 ## DataFrame Structure
 Running the toolbox requires to give specific column names to the **etr.db** dataframe, which are:
