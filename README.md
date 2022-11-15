@@ -18,8 +18,9 @@ blink.threshold <- 20
 blink.window <- 100
 ```
 
-The for loop passes through each participant along the *etr.db*. This loop can be more complex, such as including different VFAC levels, runs or conditions, but ensure that a subset of trials is sent to the **run.participant()** function and the iterative information is stored in the *result.db* variable. Upon completion, the results should be visually examined to roughly assess the quality of the analysis (see [EyeTrack Visualizer](#eyetrack-visualizer)). Download the [dataset sample](https://drive.google.com/file/d/19H0v0gM3iok11b2_d4nvUm9sdomWxisV/view?usp=sharing) to run the code below.
+The for loop passes through each participant along the *etr.db*. This loop can be more complex, such as including different VFAC levels, runs or conditions, but ensure that a subset of trials is sent to the **run.participant()** function and the iterative information is stored in the *result.db* variable. Upon completion, the results should be visually examined to roughly assess the quality of the analysis (see [EyeTrack Visualizer](#eyetrack-visualizer)). Download the [dataset sample](https://drive.google.com/file/d/19H0v0gM3iok11b2_d4nvUm9sdomWxisV/view?usp=sharing) to run the code [below](#running-eyetrack).
 
+### Running EyeTrack
 ``` r
 SUBJ <- c("subS01","subS02")
 
