@@ -821,14 +821,14 @@ plt.sbj.analysis <- function(sbj,vfac,SAMPLING,etr.db,trl.idx,EYE,result.db,Run=
   sbj.saccades <- subset(result.db$saccades,subID==sbj & trial==trl.idx & eye==EYE)
   sbj.fixations <- subset(result.db$fixations,subID==sbj & trial==trl.idx & eye==EYE)
   
-  if(!missing(vfac) || !is.null(vfac) ||  !is.na(vfac)){
+  if(!missing(vfac) || !is.null(vfac)){
     sbj.blinks <- subset(sbj.blinks,VFAC==vfac)
     sbj.summary <- subset(sbj.summary,VFAC==vfac)
     sbj.saccades <- subset(sbj.saccades,VFAC==vfac)
     sbj.fixations <- subset(sbj.fixations, VFAC==vfac)
   } 
   
-  if(!missing(Run) || !is.null(Run) ||  !is.na(Run)) {
+  if(!missing(Run) || !is.null(Run)){
     sbj.blinks <- subset(sbj.blinks,run == Run)
     sbj.summary <- subset(sbj.summary,run == Run)
     sbj.saccades <- subset(sbj.saccades,run == Run)
@@ -852,7 +852,7 @@ plt.sbj.analysis <- function(sbj,vfac,SAMPLING,etr.db,trl.idx,EYE,result.db,Run=
               plt.raw=plt.raw.trial,
               trial=trl.idx,
               label=unique(sbj.trial$label)))
-} 
+}
 
 #===============================================================================
 # analysis
