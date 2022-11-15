@@ -69,7 +69,7 @@ The pipeline begins with a call to **run.participant()**, which takes a subset o
 The workflow between [core functions](#core-functions-information) is depicted below.
 
 <p align="center">
-  <img width="600" height="408.65" src="https://github.com/leandrolecca/eyetrackdev/blob/main/eyetrack_presentation_V2.png">
+  <img width="600" height="408.65" src="https://github.com/leandrolecca/eyetrackdev/blob/main/pipeline_architecgture.png">
 </p>
 
 ## Core functions information
