@@ -1,0 +1,125 @@
+---
+title: "run_eytrack"
+output: html_output
+---
+
+```{r setup, include=FALSE}
+rm(list=ls())
+
+require(dplyr)
+library(plyr)
+library(readr)
+library(dplyr)
+library(Cairo)
+library(reshape)
+library(ggplot2)
+library(ggpubr)
+library(MASS)
+library(ggforce)
+library(hrbrthemes)
+library(RColorBrewer)
+library(tidyverse)
+library(tools)
+library(pracma) 
+library(patchwork)
+options(bitmapType = "cairo")
+
+basedir <- "/bcbl/home/home_g-m/llecca/Scripts/thalentproj/etr_analysis"
+setwd(basedir)
+
+source("eyetrack_toolbox.R")
+```
+
+#===============================================================================
+# Run the analysis (saccades, fixations and blinks detection) on the eyetracker 
+# database
+#===============================================================================
+
+```{r}
+MINDUR <- 10
+VFAC <- seq(6,10)
+SAMPLING <- 1000
+blink.threshold <- 20
+blink.window <- 100
+
+# load sample dataset
+load("eyetrack-sample.RData")
+
+SUBJ <- c("subS01","subS02")
+
+# define an empty list to save the summary, fixations, saccades and blinks
+#-------------------------------------------------------------------------------
+result.db <- list(summary=c(),fixations=c(),blinks=c(),saccades=c())
+
+# Now I use the run.participant function to get the events (blinks, fixations,
+# saccades) on every trial for each eye
+#-------------------------------------------------------------------------------
+for (sbj in 1:length(SUBJ)){
+  for (vfc in 1:length(VFAC)){
+    participant <- etr.db[etr.db$subID == SUBJ[sbj],]
+    right.eye <- run.participant(participant,eye='right',SAMPLING,
+                                 blink.threshold,blink.window,MINDUR,VFAC[vfc])
+    left.eye <- run.participant(participant,eye='left',SAMPLING, 
+                                blink.threshold,blink.window,MINDUR,VFAC[vfc])
+    
+    result.eyes <- mapply(rbind, left.eye,right.eye,SIMPLIFY=FALSE)
+    result.eyes <- mapply(cbind, result.eyes, "VFAC"=VFAC[vfc], SIMPLIFY=FALSE)
+    result.eyes <- mapply(cbind, result.eyes, "MINDUR"=MINDUR, SIMPLIFY=FALSE)
+    result.eyes <- mapply(cbind, result.eyes, "subID"=SUBJ[sbj], SIMPLIFY=FALSE)
+    
+    result.db <- mapply(rbind,result.db,result.eyes,SIMPLIFY=FALSE)
+  } 
+}
+
+save(list=c("result.db"),
+     file=file.path(basedir, 'eyetrack-report.RData'))
+```
+
+#===============================================================================
+# See some trials and their events with the viewer function
+#===============================================================================
+
+```{r}
+sbj <- "subS02"
+trials <- c(644,788,459,228,1139)
+
+dir.create(file.path(basedir, 'eyetrack-visualizer'), showWarnings = FALSE)
+
+n <- 0
+
+for (trl in 1:length(trials)){
+  plt.trial <- plt.sbj.analysis(sbj,vfac=6,SAMPLING=SAMPLING,etr.db=etr.db,
+                                trl.idx = trials[trl],EYE='right',
+                                result.db=result.db)
+  n <- n+1
+  
+#  plt.trial$plt.raw
+  ggsave(file=file.path(basedir,'eyetrack-visualizer',
+                        paste0("00",as.character(n),"_",sbj,'_trial_',
+                               plt.trial$trial,'_raw.png')),
+         plot=plt.trial$plt.raw,
+         height=6,width=16)
+  
+  n <- n+1
+#  plt.trial$plt.analysis
+  ggsave(file=file.path(basedir,'eyetrack-visualizer',
+                        paste0("00",as.character(n),"_",sbj,'_trial_',
+                               plt.trial$trial,'_analysis.png')), 
+         plot=plt.trial$plt.analysis,
+         height=6,width=16)
+  
+} 
+```
+
+#===============================================================================
+# Create a .gif with the raw-analysis .png generated just before
+#===============================================================================
+
+```{r}
+library(gifski)
+## list file names and read in
+imgs <- list.files(file.path(basedir,'eyetrack-visualizer'), full.names = TRUE)
+
+gifski(png_files = imgs, gif_file = file.path(basedir,'raw-analysis.gif'),
+       width=1200,height=450, delay=3, loop=TRUE, progress=TRUE)
+```
