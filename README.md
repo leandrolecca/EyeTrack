@@ -111,4 +111,4 @@ This data can be taken from the .edf files that EyeLink saves after running your
 ```
 
 ## Future work
-EyeTrack envisions implementing automatic processing of .edf files in **etr.db** dataframe and running the toolbox inmmediatly. This will be done by containerizing the pipeline so that the user can invoke the analysis via the data directory and set his own parameter values in a lightway. A similar work was done by [Alexander Pastukhov](https://alexander-pastukhov.github.io/eyelinkReader/), but only in R without being containerized.
+EyeTrack envisions implementing automatic processing of .edf files in *etr.db* dataframe and running the toolbox inmmediatly. This will be done by containerizing the pipeline so that the user can invoke the analysis via the data directory and set his own parameter values in a lightway. A similar work was done by [Alexander Pastukhov](https://alexander-pastukhov.github.io/eyelinkReader/), but only in R without being containerized.
