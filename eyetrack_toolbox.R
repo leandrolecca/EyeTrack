@@ -4,19 +4,19 @@
 # This function returns a dataframe indicating:
 # 1. start: index of the onset
 # 2. end : index of the offset
-# 3. mindur : duration of the saccade (in samples) without the window
-# 4. dur : duration of the saccade (in samples) with the window
+# 3. mindur : duration of the blink (in samples) without the window
+# 4. dur : duration of the blink (in samples) with the window
 # 5. t_mindur : minimum duration of the saccade (in ms) without the window
 # 6. t_dur : duration of the saccade(in ms) with the window
 # INPUTS:
 # For that, user must provide the following inputs:
 # 1. sample : dataframe with x-y etr series
 # 2. SAMPLING : sampling frequency at which data were collected
-# 3. blink_threshold : duration of a blink in ms
-# 4. blink_window : window to remove around the blink in ms
+# 3. blink.threshold : duration of a blink in ms
+# 4. blink.window : window to remove around the blink in ms
 #===============================================================================
 
-blink.detect <- function(sample,SAMPLING=1000,blink_threshold=70,blink_window=70) {
+blink.detect <- function(sample,SAMPLING=1000,blink.threshold=70,blink.window=70) {
   secsamp <- 1000/SAMPLING
   sample$idx <- 1:nrow(sample)
   
@@ -38,9 +38,9 @@ blink.detect <- function(sample,SAMPLING=1000,blink_threshold=70,blink_window=70
     if (nblinks==1) {
       offset <- tail(blinkidx$idx,1)
       minduration <- (offset - onset)*secsamp
-      duration <- minduration + blink_window*2
-      df_blinks[1,] <- c(onset - blink_window/secsamp,
-                         offset + blink_window/secsamp,
+      duration <- minduration + blink.window*2
+      df_blinks[1,] <- c(onset - blink.window/secsamp,
+                         offset + blink.window/secsamp,
                          minduration/secsamp,
                          duration/secsamp, 
                          minduration,
@@ -48,9 +48,9 @@ blink.detect <- function(sample,SAMPLING=1000,blink_threshold=70,blink_window=70
     } else{
       offset <- blinkidx[idx_blink_sep[1],'idx']
       minduration <- (offset - onset)*secsamp
-      duration <- minduration + blink_window*2
-      df_blinks[1,] <- c(onset - blink_window/secsamp,
-                         offset + blink_window/secsamp,
+      duration <- minduration + blink.window*2
+      df_blinks[1,] <- c(onset - blink.window/secsamp,
+                         offset + blink.window/secsamp,
                          minduration/secsamp,
                          duration/secsamp,
                          minduration,
@@ -63,9 +63,9 @@ blink.detect <- function(sample,SAMPLING=1000,blink_threshold=70,blink_window=70
           offset <- blinkidx[idx_blink_sep[nb],'idx']
         }
         minduration <- (offset - onset)*secsamp
-        duration <- minduration + blink_window*2
-        df_blinks[nb,] <- c(onset - blink_window/secsamp,
-                            offset + blink_window/secsamp,
+        duration <- minduration + blink.window*2
+        df_blinks[nb,] <- c(onset - blink.window/secsamp,
+                            offset + blink.window/secsamp,
                             minduration/secsamp,
                             duration/secsamp,
                             minduration,
@@ -73,7 +73,7 @@ blink.detect <- function(sample,SAMPLING=1000,blink_threshold=70,blink_window=70
       }
     }
     
-    df_blinks <- df_blinks[which(df_blinks$t_mindur > blink_threshold),]
+    df_blinks <- df_blinks[which(df_blinks$t_mindur > blink.threshold),]
     if (dim(df_blinks)[1] == 0) {
       df_blinks <- NULL
     } else{
@@ -372,12 +372,12 @@ microsacc <- function(sample,VFAC=5,MINDUR=3,SAMPLING=500) {
 #   - "trial": number of the trial
 #   - "label": a label for the trial, usually "RECORDING_SESSION_LABEL"
 # 2. SAMPLING: sampling frequency at which data were collected
-# 3. blink_threshold : duration of a blink in ms
-# 4. blink_window : window to remove around the blink in ms
+# 3. blink.threshold : duration of a blink in ms
+# 4. blink.window : window to remove around the blink in ms
 # 5. MINDUR: minimum duration threshold for saccade detection (10 ms)
 # 6. VFAC: velocity threshold factor for saccade detection
 #===============================================================================
-saccfixblink <- function(sample,SAMPLING,blink_threshold,blink_window,MINDUR,VFAC){
+saccfixblink <- function(sample,SAMPLING,blink.threshold,blink.window,MINDUR,VFAC){
   
   # sample$time <- seq(1,nrow(sample),1000/SAMPLING)
   sample$saccblink <- 0 # column to fill with 1s when a saccade or blink takes place 
@@ -388,7 +388,7 @@ saccfixblink <- function(sample,SAMPLING,blink_threshold,blink_window,MINDUR,VFA
   
   # detect blinks
   # ------------------------------------------------------------------
-  blinks <- blink.detect(sample,SAMPLING,blink_threshold,blink_window)
+  blinks <- blink.detect(sample,SAMPLING,blink.threshold,blink.window)
   
   # ... if blinks detected ...
   # ------------------------------------------------------------------
@@ -604,13 +604,13 @@ plt.etr.series <- function(sample,SAMPLING,summary,fixations,blinks,saccades){
 #       - 'RECORDING_SESSION_LABEL'
 # 2. eye: aye to analyze, 'right' or 'left'
 # 3. SAMPLING: sampling frequency at which data were collected
-# 4. blink_threshold : duration of a blink in ms
-# 5. blink_window : window to remove around the blink in ms
+# 4. blink.threshold : duration of a blink in ms
+# 5. blink.window : window to remove around the blink in ms
 # 6. MINDUR: minimum duration threshold for saccade detection (10 ms)
 # 7. VFAC: velocity threshold factor for saccade detection
 #===============================================================================
-run.participant <- function(stimulidata,eye,SAMPLING,blink_threshold,
-                            blink_window,MINDUR,VFAC){
+run.participant <- function(stimulidata,eye,SAMPLING,blink.threshold,
+                            blink.window,MINDUR,VFAC){
   if(missing(eye)){
     stop('Please, type right or left in the eye variable to start the analysis')
   } else if(eye=='right'){
@@ -638,7 +638,7 @@ run.participant <- function(stimulidata,eye,SAMPLING,blink_threshold,
     if(sum(rowSums(is.na(trial[,c('x','y')])) == 2) > nrow(trial)*0.75){
       result <- NULL
     } else {
-      result <- saccfixblink(trial,SAMPLING,blink_threshold,blink_window,MINDUR,VFAC)
+      result <- saccfixblink(trial,SAMPLING,blink.threshold,blink.window,MINDUR,VFAC)
     } 
     
     summary <- rbind(summary,result$summary)
@@ -768,15 +768,3 @@ plt.sbj.analysis <- function(sbj,vfac,SAMPLING,etr.db,trl.idx,EYE,result.db,Run=
               label=unique(sbj.trial$label)))
 }
 
-#===============================================================================
-# This function discards trials having a signal loss higher than the 75 % of the
-# length
-#===============================================================================
-trial.length.check <- function(trial){
-  if(sum(rowSums(is.na(trial[,c('x','y')])) == 2) > nrow(trial)*0.75){
-    trial <- NULL
-  } else {
-    trial <- data.frame(unique(trial[,c('label','trial','subID')]))
-  }
-  trial
-} 
