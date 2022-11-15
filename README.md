@@ -74,7 +74,7 @@ The pipeline begins with a call to **run.participant()**, which takes a subset o
 The workflow between [core functions](#core-functions-information) is depicted below.
 
 <p align="center">
-  <img width="600" height="408.65" src="https://github.com/leandrolecca/eyetrackdev/blob/main/pipeline_architecgture.png">
+  <img width="600" height="408.65" src="https://github.com/leandrolecca/eyetrackdev/blob/main/pipeline_architecture.png">
 </p>
 
 ## Core functions information
@@ -87,7 +87,7 @@ The core functions can be edited or even new functions can be added with differe
 | saccfixblink  | sample (data for a trial), SAMPLING, blink.threshold, <br /> blink.window, MINDUR, VFAC  | A list containing event information ocurring during a trial
 | microsacc | sample (data for a trial), SAMPLING, MINDUR, VFAC | dataframe with specific saccade information (start, end, sample duration, time duration, peak velocity, horizontal and vertical components and amplitudes, and amplitude)
 | blink.detect | SAMPLING, blink.threshold, blink.window | dataframe with specific blink information (start, end, and sample and time durations with and without the blink.window)
-| aggregate.fixations | sample (data for a trial with a new added column <br /> marking blinks and saccades) |
+| aggregate.fixations | sample (data for a trial with a new added column <br /> marking blinks and saccades) | dataframe with specific fixation information (start, end, and median and median absolute deviation of x-y)
 
 
 ## DataFrame Structure
