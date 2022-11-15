@@ -18,7 +18,7 @@ blink.threshold <- 20
 blink.window <- 100
 ```
 
-The for loop passes through each participant along the *etr.db*. This loop can be more complex, such as including different VFAC levels, runs or conditions, but ensure that a subset of trials is sent to the **run.participant()** function and the iterative information is stored in the *result.db* variable. Upon completion, the results should be visually examined to roughly assess the quality of the analysis (see [EyeTrack Visualizer](#eyetrack-visualizer)). Download the [dataset sample](https://drive.google.com/file/d/19H0v0gM3iok11b2_d4nvUm9sdomWxisV/view?usp=sharing) to run the code [below](#running-eyetrack).
+The for loop passes through each participant along the *etr.db*. This loop can be more complex, such as including different VFAC levels, runs or conditions, but ensure that a subset of trials is sent to the **run.participant()** function and the iterative information is stored in the *result.db* variable. Upon completion, the results should be visually examined to roughly assess the quality of the analysis (see [EyeTrack Visualizer](#eyetrack-visualizer)). Download the [sample dataset](https://drive.google.com/file/d/19H0v0gM3iok11b2_d4nvUm9sdomWxisV/view?usp=sharing) to run the code [below](#running-eyetrack), which is also available in [run_eyetrack.Rmd](https://github.com/leandrolecca/eyetrackdev/blob/main/run_eyetrack.Rmd).
 
 ### Running EyeTrack
 ``` r
@@ -111,4 +111,4 @@ This data can be taken from the .edf files that EyeLink saves after running your
 ```
 
 ## Future work
-EyeTrack envisions implementing automatic processing of .edf files in *etr.db* dataframe and running the toolbox inmmediatly. This will be done by containerizing the pipeline so that the user can invoke the analysis via the data directory and set his own parameter values in a lightway. A similar work was done by [Alexander Pastukhov](https://alexander-pastukhov.github.io/eyelinkReader/), but only in R without being containerized.
+EyeTrack envisions implementing automatic processing of .edf files in *etr.db* dataframe and starting the toolbox immediatly. This will be done by containerizing the pipeline so that the user can invoke the analysis via the data directory and set their own parameter values in a lightway. A similar work was done by [Alexander Pastukhov](https://alexander-pastukhov.github.io/eyelinkReader/), but only in R without containerization.
