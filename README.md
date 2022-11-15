@@ -80,6 +80,16 @@ The workflow between [core functions](#core-functions-information) is depicted b
 ## Core functions information
 The core functions can be edited or even new functions can be added with different detection heuristics as long as they adhere to the output structure (see full code in [eyetrack_toolbox.R](https://github.com/leandrolecca/eyetrackdev/blob/main/eyetrack_toolbox.R)).
 
+
+| Core function  | Inputs | Output |
+| ------------- | ------------- | ------------- |
+| run.participant  | etr.db (data for a participant), eye, SAMPLING, <br />  blink.threshold, blink.window, MINDUR, VFAC| *result.db*, a list containing event information for all the participant's trials
+| saccfixblink  | sample (data for a trial), SAMPLING, blink.threshold, <br /> blink.window, MINDUR, VFAC  | A list containing event information ocurring during a trial
+| microsacc | sample (data for a trial), SAMPLING, MINDUR, VFAC | dataframe with specific saccade information (start, end, sample duration, time duration, peak velocity, horizontal and vertical components and amplitudes, and amplitude)
+| blink.detect | SAMPLING, blink.threshold, blink.window | dataframe with specific blink information (start, end, and sample and time durations with and without the blink.window)
+| aggregate.fixations | sample (data for a trial with a new added column <br /> marking blinks and saccades) |
+
+
 ## DataFrame Structure
 Running the toolbox requires to give specific column names to the **etr.db** dataframe, which are:
 
