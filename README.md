@@ -2,7 +2,7 @@
 EyeTrack is an R-based toolbox intended to facilitate research analysis of eyetracking data (see [How it works](#how-it-works)). It has been programmed in a modular and scalable fashion to open collaborative work between researchers interested in implementing different algorithms for saccade, blink and fixation detection while respecting a main architecture (see [Pipeline architecture](#pipeline-architecture)).
 
 ## How it works
-From the x-y gaze position of a trial, EyeTrack provides event information about saccades, blinks and fixations that are taking place. In the main.md notebook there is an example of how to run the toolbox after giving a minimal structure format to the eyetracking data, aka *etr.db* (see [DataFrame Structure](#dataframe-structure)). Before, the user must provide a set of parameters to make work the detection, which are:
+Based on the x-y gaze position of a trial, EyeTrack provides event information about saccades, blinks and fixations taking place. In the main.md notebook there is an example of how to run the toolbox after giving a minimal structure format to the eyetracking data, aka *etr.db* (see [DataFrame Structure](#dataframe-structure)). Before, the user must provide a set of parameters to make work the detection, which are:
 
 * MINDUR: minimum duration of a saccade, in millisecons (ms)
 * VFAC: velocity threshold function
@@ -72,7 +72,7 @@ The workflow between [core functions](#core-functions-information) is depicted b
 The core functions can be edited or even new functions can be added with different detection heuristics as long as they adhere to the output structure (see full code in eyetrack_toolbox.R).
 
 ## DataFrame Structure
-Running the toolbox requires to give specific column names to the “etr.db” dataframe, which are:
+Running the toolbox requires to give specific column names to the **etr.db** dataframe, which are:
 
 * lxdeg: left eye x position in degs
 * lydeg: left eye y position in degs
@@ -100,3 +100,6 @@ This data can be taken from the .edf files that EyeLink saves after running your
 6000010	subS02	58_seq2_HML_L_run6_Q3_right_x=-3.2361º_y=-2.3511º.png	    1018	    -0.2203135	0.5177252	 0.0117501	0.1555968
 ...
 ```
+
+## Future work
+EyeTrack envisions implementing automatic processing of .edf files in **etr.db** dataframe and running the toolbox inmmediatly. This is done by contanarizing the pipeline so that the user can invoke the analysis via the data directory and set his own parameter values. A similar work was done by [Alexander Pastukhov](https://alexander-pastukhov.github.io/eyelinkReader/), but only in R without being contanairized.
