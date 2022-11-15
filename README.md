@@ -52,17 +52,21 @@ save(list=c("result.db"), file=file.path(basedir, 'eyetrack-report.RData'))
 ```
 
 ## EyeTrack Visualizer
-The **plt.sbj.analysis()** function plots the time series of the x-y position of a trial and marks the events detected along the signal in black, blue, yellow and red for fixations, saccades, blinks and artifacts, respectively. 
+The **plt.sbj.analysis()** function plots the time series of the x-y position of a trial and marks the events detected along the signal in black, blue, yellow and red for fixations, saccades, blinks and artifacts, respectively (see [few trials](#before-and-after-eyetrack-performance) before and after the analysis).
 
 ``` r
-sbj <- "sub009"
+sbj <- "subS02"
 plt.trial <- plt.sbj.analysis(sbj,vfac=6,SAMPLING=SAMPLING,etr.db=etr.db,
-                              trl.idx=390,EYE='right',result.db=result.db)
+                              trl.idx=644,EYE='right',result.db=result.db)
 # show raw signal
 plt.trial$plt.raw
 # show events
 plt.trial$plt.analysis
 ```
+### Before and after EyeTrack performance
+<p align="center">
+  <img width="1200" hegiht="450" src="https://github.com/leandrolecca/eyetrackdev/blob/main/raw-analysisV3.gif">
+</p>
 
 ## Pipeline architecture
 The pipeline begins with a call to **run.participant()**, which takes a subset of trials for a single subject and calls **saccfixblink()** therein for each trial (if the trial does not account for at least 25 % of its total signal, this is interpreted as a high eyetracking loss, and the analysis for that trial is not performed). The saccfixblink() function first calls the **microsacc()** function for saccade detection, taken and adapted from [Engbert’s microsaccade toolbox](http://read.psych.uni-potsdam.de/index.php?option=com_content&view=article&id=140:engbert-et-al-2015-microsaccade-toolbox-for-r&catid=26:publications&Itemid=34) [1], and whose algorithm is based on a velocity threshold (see [here](https://reader.elsevier.com/reader/sd/pii/S0042698903000841?token=D920381623BEBD3293EFA0C66393604FA29032371144D8C9E4AEBA121ED09967D2BE5A4A9209C85430377A11CE466C18&originRegion=eu-west-1&originCreation=20221114081753) for more details). Besides, blinks are detected with the original **blink.detect()** function, which looks for a series of NA values (e.g., loss of eye tracking due to eyelid closure) that is a minimum time in milliseconds specified in the blink.threshold parameter, and then removes a time window specified in the blink.window parameter around the ends of the signal loss, since eyelid closure and reopening typically cause spurious movements that lead to artifacts in the signal. After both saccades and blinks are detected, saccades inside the blink window range, e.g., at the beginning and end, are removed. If the onset of the saccade is outside but the offset is inside the blink range, the start of the blink becomes the onset of the saccade and the saccade is removed. If the onset of the saccade is inside but the offset is outside the blink range, the start of the blink becomes the offset of the saccade and the saccade is removed. Finally, fixations and artifacts are detected and labeled with the **aggregate.fixations()** and **label.fixations()** functions taken from [Tmalsburg's toolboox](https://github.com/tmalsburg/saccades), respectively, from the remaining signal without event detection. Therefore, each time step of the signal should be labeled with a unique event. The information about the beginning and end of each event is stored in results.db$summary, while more detailed information about saccades, blinks and fixations can be found in result.db$saccades, result.db$blinks and result.db$fixations.
@@ -107,4 +111,4 @@ This data can be taken from the .edf files that EyeLink saves after running your
 ```
 
 ## Future work
-EyeTrack envisions implementing automatic processing of .edf files in **etr.db** dataframe and running the toolbox inmmediatly. This is done by contanarizing the pipeline so that the user can invoke the analysis via the data directory and set his own parameter values. A similar work was done by [Alexander Pastukhov](https://alexander-pastukhov.github.io/eyelinkReader/), but only in R without being contanairized.
+EyeTrack envisions implementing automatic processing of .edf files in **etr.db** dataframe and running the toolbox inmmediatly. This will be done by containerizing the pipeline so that the user can invoke the analysis via the data directory and set his own parameter values in a lightway. A similar work was done by [Alexander Pastukhov](https://alexander-pastukhov.github.io/eyelinkReader/), but only in R without being containerized.
