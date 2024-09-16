@@ -1,0 +1,319 @@
+---
+title: "read_eyelink_data"
+---
+
+```{r setup, include=FALSE}
+rm(list=ls())
+
+library(plyr)
+library(dplyr)
+library(readr)
+library(Cairo)
+library(reshape)
+library(ggplot2)
+library(ggforce)
+library(stringr)
+library(RColorBrewer)
+library(eyelinker)
+library(iterators)
+library(parallel)
+library(foreach)
+library(doParallel)
+
+basedir <- "/bcbl/home/home_g-m/llecca/Scripts/thalentproj/etr_analysis"
+setwd(basedir)
+
+source("eyetrack_toolbox.R")
+```
+
+#===============================================================================
+# 2. Set key parameters:
+# Please ensure you use the correct resolution and 
+# dimensions / distance for your display screen,
+# and sampling rate of your EyeLink
+#===============================================================================
+
+```{r}
+SCREEN_RESX_PX = 1280   # Screen resolution (X) in pixels
+SCREEN_RESY_PX = 1024   # Screen resolution (Y) in pixels
+SCREEN_WIDTH_MM = 420   # Screen width in mm
+SCREEN_HEIGHT_MM = 315  # Screen height in mm
+SCREEN_DIST_MM = 1280   # Screen distance in mm
+```
+
+#===============================================================================
+# 3. read edf data: x-y position for both eyes
+#===============================================================================
+
+```{r}
+#------------------------------------------------------------------------------
+edf.data.basedir <- "/export/home/llecca/public/LEPA/sub_output/thalent_fMRI_2023_data_etr"
+subs <- grep("T",unique(basename(list.dirs(edf.data.basedir, recursive = FALSE))), 
+             value = TRUE)
+asc.files <- list.files(edf.data.basedir, pattern = "asc", recursive = T)
+
+paradigms <- c("goal_oriented_paradigm","contextual_cueing_paradigm")
+
+for (pg in paradigms){
+  dirs <- asc.files[grepl(pg, asc.files,fixed = TRUE)]
+  for (sbj in subs){
+    subj.dirs <- dirs[grepl(sbj,dirs, fixed = TRUE)]
+    if (length(subj.dirs) == 0){
+      next
+    }
+    eyedata <- data.frame()
+    for (ascfile in subj.dirs){
+      auxdata <- asc.processing(file.path(edf.data.basedir,ascfile))
+      first.fix <- grep('Fixation',auxdata$SAMPLE_MESSAGE)[1]
+      auxdata <- auxdata[-(1:(first.fix-1)),]
+      eyedata <- rbind(eyedata,auxdata)
+    }
+    rm(auxdata)
+    rownames(eyedata) <- NULL
+    
+    if (sum(str_detect(names(eyedata),'GAZE')) == 0){
+      next
+    }
+    
+    if (sum(str_detect(names(eyedata),'GAZE')) == 2){
+      # if only one eye: RIGHT
+      if (any(grepl("RIGHT",names(eyedata)[str_detect(names(eyedata),"GAZE")]))){
+        eyedata$rxdeg <- (180/pi)*atan((eyedata$RIGHT_GAZE_X-SCREEN_RESX_PX/2) /
+                               (SCREEN_DIST_MM * SCREEN_RESX_PX / SCREEN_WIDTH_MM))
+        eyedata$rydeg <- -(180/pi)*atan((eyedata$RIGHT_GAZE_Y-SCREEN_RESY_PX/2) /
+                                (SCREEN_DIST_MM * SCREEN_RESY_PX / SCREEN_HEIGHT_MM))
+        eyedata$lxdeg <- NA
+        eyedata$lydeg <- NA
+      # if only one eye: LEFT  
+      } else if (any(grepl("LEFT",names(eyedata)[str_detect(names(eyedata),"GAZE")]))){
+        eyedata$lxdeg <- (180/pi)*atan((eyedata$LEFT_GAZE_X-SCREEN_RESX_PX/2) /
+                           (SCREEN_DIST_MM * SCREEN_RESX_PX / SCREEN_WIDTH_MM))
+        eyedata$lydeg <- -(180/pi)*atan((eyedata$LEFT_GAZE_Y-SCREEN_RESY_PX/2) /
+                                (SCREEN_DIST_MM * SCREEN_RESY_PX / SCREEN_HEIGHT_MM))
+        eyedata$rxdeg <- NA
+        eyedata$rydeg <- NA
+      }
+    # TWO eyes: LEFT & RIGHT  
+    } else if (sum(str_detect(names(eyedata),'GAZE')) == 4) {
+      eyedata$lxdeg <- (180/pi)*atan((eyedata$LEFT_GAZE_X-SCREEN_RESX_PX/2) /
+                           (SCREEN_DIST_MM * SCREEN_RESX_PX / SCREEN_WIDTH_MM))
+      eyedata$lydeg <- -(180/pi)*atan((eyedata$LEFT_GAZE_Y-SCREEN_RESY_PX/2) /
+                              (SCREEN_DIST_MM * SCREEN_RESY_PX / SCREEN_HEIGHT_MM))
+      eyedata$rxdeg <- (180/pi)*atan((eyedata$RIGHT_GAZE_X-SCREEN_RESX_PX/2) /
+                               (SCREEN_DIST_MM * SCREEN_RESX_PX / SCREEN_WIDTH_MM))
+      eyedata$rydeg <- -(180/pi)*atan((eyedata$RIGHT_GAZE_Y-SCREEN_RESY_PX/2) /
+                              (SCREEN_DIST_MM * SCREEN_RESY_PX / SCREEN_HEIGHT_MM))
+    }
+    eyecolumns <- c("lxdeg","lydeg","rxdeg","rydeg")
+    dat1 <- eyedata[,c("RECORDING_SESSION_LABEL", 
+                       "TRIAL_INDEX", 
+                       eyecolumns,
+                       "SAMPLE_MESSAGE")]
+    
+    fixation.row <- grep('Fixation display',dat1$SAMPLE_MESSAGE)
+    stimuli.row <- grep('Stimuli display',dat1$SAMPLE_MESSAGE)
+    after.fixation.row <- grep('After fixation display',dat1$SAMPLE_MESSAGE)
+    
+    dat1$nelements <- ""
+    dat1$quadrant <- ""
+    dat1$x <- ""
+    dat1$y <- ""
+    dat1$ecc <- ""
+    dat1$image <- ""
+    dat1$run <- ""
+    
+    # set-up the parallelizer
+    n.cores <- parallel::detectCores() - 10
+    my.cluster <- parallel::makeCluster(
+      n.cores, 
+      type = "PSOCK"
+    )
+    doParallel::registerDoParallel(cl = my.cluster)
+    # d <- 1
+    #_____________________________________________#
+    results <- foreach(i = 1:length(fixation.row),.combine='rbind') %dopar% {
+      auxname <- sub('.*\\, ', '', dat1[stimuli.row[i],"SAMPLE_MESSAGE"])
+      
+      fix.rows <- fixation.row[i]:(stimuli.row[i]-1)
+      stim.rows <- stimuli.row[i]:(after.fixation.row[i]-1)
+      
+      trial.rows <- c(fix.rows,stim.rows)
+      
+      auxnamesplited <- strsplit(auxname,split="_")
+      dat1[trial.rows,"RECORDING_SESSION_LABEL"] <- auxname
+      dat1[trial.rows,"TRIAL_INDEX"] <- i
+      dat1[trial.rows,"nelements"] <- auxnamesplited[[1]][6]
+      dat1[trial.rows,"quadrant"] <- auxnamesplited[[1]][8]
+      dat1[trial.rows,"run"]  <- auxnamesplited[[1]][7]
+      dat1[trial.rows,"condition"] <- auxnamesplited[[1]][2]
+      
+      # calculate the excentricity  
+      x <- strsplit(auxnamesplited[[1]][11],split='=')[[1]][2] 
+      x <- as.numeric(strsplit(x,split='\032')[[1]][1])
+      y <- strsplit(auxnamesplited[[1]][12],split='=')[[1]][2] 
+      y <- as.numeric(strsplit(y,split='\032')[[1]][1])
+      dat1[trial.rows,"x"] <- x
+      dat1[trial.rows,"y"] <- y
+      
+      # get de ECC
+      dat1[trial.rows,"ecc"]  <- round(sqrt(x^2+y^2))
+      
+      dat1[fix.rows,"image"] <- 'Fixation'
+      dat1[stim.rows,"image"] <- 'Search'
+      
+      dat <- dat1[trial.rows,] 
+    }
+    # kill the cluster
+    parallel::stopCluster(cl = my.cluster)
+    dat1 <- results
+    dat1$subID <- sbj
+    if (sum(str_detect(names(dat1),'deg')) == 4){
+      # combined
+      dat1$xlr <- (dat1$lxdeg+dat1$rxdeg)/2
+      dat1$ylr <- (dat1$lydeg+dat1$rydeg)/2
+    }
+    
+    subdir <- file.path(edf.data.basedir,unique(dirname(subj.dirs)))
+    
+    saveRDS(dat1, paste(subdir,'etr_data.rds',sep="/"))
+    
+    assign(paste('sub-',sbj,'_eyedata',sep=""), dat1)
+    save(list = c(paste('sub-',sbj,'_eyedata',sep="")), 
+         file = paste(subdir,'etr_data.RData',sep="/"))
+  }
+}
+```
+
+#===============================================================================
+# 4. get pupillometry data for both eyes
+#===============================================================================
+
+```{r}
+edf.data.basedir <- "/bcbl/home/public/LEPA/sub_output/thalent_fMRI_2023_data_etr"
+subs <- grep("T",unique(basename(list.dirs(edf.data.basedir, recursive = FALSE))), 
+             value = TRUE)
+asc.files <-list.files(edf.data.basedir,pattern = "asc", recursive = T)
+paradigms <- c("goal_oriented_paradigm","contextual_cueing_paradigm")
+
+for (pg in paradigms){
+  dirs <- asc.files[grepl(pg, asc.files,fixed = TRUE)]
+  pupillometry.db <- data.frame()
+  for (sbj in subs){
+    subj.dirs <- dirs[grepl(sbj,dirs, fixed = TRUE)]
+    if (length(subj.dirs) == 0){
+      next
+    }
+    eyedata <- data.frame()
+    for (ascfile in subj.dirs){
+      auxdata <- asc.processing(file.path(edf.data.basedir,ascfile))
+      first.fix <- grep('Fixation',auxdata$SAMPLE_MESSAGE)[1]
+      auxdata <- auxdata[-(1:(first.fix-1)),]
+      eyedata <- rbind(eyedata,auxdata)
+    }
+    rm(auxdata)
+    rownames(eyedata) <- NULL
+    
+    if (sum(str_detect(names(eyedata),'PUPIL')) == 0){
+      next
+    }
+    
+    if (sum(str_detect(names(eyedata),'PUPIL')) == 1){
+      if (any(grepl("RIGHT",names(eyedata)[str_detect(names(eyedata),"PUPIL")]))){
+        eyedata$LEFT_PUPIL_SIZE <- NA
+      } else if (any(grepl("LEFT",names(eyedata)[str_detect(names(eyedata),"PUPIL")]))){
+        eyedata$RIGHT_PUPIL_SIZE <- NA
+      }
+    } 
+    
+    eyecolumns <- c("RIGHT_PUPIL_SIZE","LEFT_PUPIL_SIZE")
+    dat1 <- eyedata[,c("RECORDING_SESSION_LABEL", 
+                       "TRIAL_INDEX", 
+                       eyecolumns,
+                       "SAMPLE_MESSAGE")]
+    
+    fixation.row <- grep('Fixation display',dat1$SAMPLE_MESSAGE)
+    stimuli.row <- grep('Stimuli display',dat1$SAMPLE_MESSAGE)
+    after.fixation.row <- grep('After fixation display',dat1$SAMPLE_MESSAGE)
+    
+    dat1$nelements <- ""
+    dat1$quadrant <- ""
+    dat1$x <- ""
+    dat1$y <- ""
+    dat1$ecc <- ""
+    dat1$image <- ""
+    dat1$run <- ""
+    
+    # set-up the parallelizer
+    n.cores <- parallel::detectCores() - 10
+    my.cluster <- parallel::makeCluster(
+      n.cores, 
+      type = "PSOCK"
+    )
+    # clusterCall(my.cluster, .libPaths)
+    doParallel::registerDoParallel(cl = my.cluster)
+    # e <- new.env()
+    # e$libs <- .libPaths()
+    # clusterExport(my.cluster, "libs", envir=e)
+    # clusterEvalQ(my.cluster, .libPaths())
+    
+    # d <- 1
+    #_____________________________________________#
+    results <- foreach(i = 1:length(fixation.row),.combine='rbind') %dopar% {
+      auxname <- sub('.*\\, ', '', dat1[stimuli.row[i],"SAMPLE_MESSAGE"])
+      
+      fix.rows <- fixation.row[i]:(stimuli.row[i]-1)
+      stim.rows <- stimuli.row[i]:(after.fixation.row[i]-1)
+      
+      trial.rows <- c(fix.rows,stim.rows)
+      
+      auxnamesplited <- strsplit(auxname,split="_")
+      dat1[trial.rows,"RECORDING_SESSION_LABEL"] <- auxname
+      dat1[trial.rows,"TRIAL_INDEX"] <- i
+      dat1[trial.rows,"nelements"] <- auxnamesplited[[1]][6]
+      dat1[trial.rows,"quadrant"] <- auxnamesplited[[1]][8]
+      dat1[trial.rows,"run"]  <- auxnamesplited[[1]][7]
+      dat1[trial.rows,"condition"] <- auxnamesplited[[1]][2]
+      
+      # calculate the excentricity  
+      x <- strsplit(auxnamesplited[[1]][11],split='=')[[1]][2] 
+      x <- as.numeric(strsplit(x,split='\032')[[1]][1])
+      y <- strsplit(auxnamesplited[[1]][12],split='=')[[1]][2] 
+      y <- as.numeric(strsplit(y,split='\032')[[1]][1])
+      dat1[trial.rows,"x"] <- x
+      dat1[trial.rows,"y"] <- y
+      
+      dat1[trial.rows,"ecc"]  <- round(sqrt(x^2+y^2))
+      
+      dat1[fix.rows,"image"] <- 'Fixation'
+      dat1[stim.rows,"image"] <- 'Search'
+      
+      dat <- dat1[trial.rows,] 
+    }
+    # kill the cluster
+    parallel::stopCluster(cl = my.cluster)
+    dat1 <- results
+    dat1$subID <- sbj
+    if (sum(str_detect(names(dat1),'deg')) == 4){
+      # combined
+      dat1$xlr <- (dat1$lxdeg+dat1$rxdeg)/2
+      dat1$ylr <- (dat1$lydeg+dat1$rydeg)/2
+    }
+    
+    subdir <- file.path(edf.data.basedir,unique(dirname(subj.dirs)))
+    
+    saveRDS(dat1, paste(subdir,'pupillometry_data.rds',sep="/"))
+    
+    assign(paste('sub-',sbj,'_eyedata',sep=""), dat1)
+    save(list = c(paste('sub-',sbj,'_eyedata',sep="")), 
+         file = paste(subdir,'pupillometry_data.RData',sep="/"))
+
+    participant <- subset(dat1,image == "Search")
+    pupillometry.db <- rbind(pupillometry.db, participant)
+  }
+  saveRDS(pupillometry.db, 
+          file = file.path(
+            edf.data.basedir, 
+            paste0('pupillometry-db_',pg,'.rds')
+          ))
+}
+```
