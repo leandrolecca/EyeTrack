@@ -768,3 +768,335 @@ plt.sbj.analysis <- function(sbj,vfac,SAMPLING,etr.db,trl.idx,EYE,result.db,Run=
               label=unique(sbj.trial$label)))
 }
 
+asc.processing <- function(filepath){
+  datafile <- read.asc(filepath)
+  info.eyes <- as.data.frame(datafile$info[,c("left","right")])
+  df <- datafile$raw[,!(names(datafile$raw) %in% c("input","cr.info"))]
+  if (length(colnames(df)) == 5){ # this means that only 1 eye was recorded
+    eye <- colnames(info.eyes)[which(info.eyes == TRUE)]
+    colnames(df)[colnames(df) == "xp"] <- paste0(toupper(eye),"_GAZE_X")
+    colnames(df)[colnames(df) == "yp"] <- paste0(toupper(eye),"_GAZE_Y") 
+    colnames(df)[colnames(df) == "ps"] <- paste0(toupper(eye),"_PUPIL_SIZE") 
+  } else {
+    colnames(df)[colnames(df) == "xpl"] <- "LEFT_GAZE_X"
+    colnames(df)[colnames(df) == "ypl"] <- "LEFT_GAZE_Y"
+    colnames(df)[colnames(df) == "psl"] <- "LEFT_PUPIL_SIZE"
+    colnames(df)[colnames(df) == "xpr"] <- "RIGHT_GAZE_X"
+    colnames(df)[colnames(df) == "ypr"] <- "RIGHT_GAZE_Y"
+    colnames(df)[colnames(df) == "psr"] <- "RIGHT_PUPIL_SIZE"
+  }
+  colnames(df)[colnames(df) == "block"] <- "TRIAL_INDEX"
+  
+  df$SAMPLE_MESSAGE <- ".."
+  df$RECORDING_SESSION_LABEL <- "subID"
+  
+  df.msg <- as.data.frame(datafile$msg)
+  # check repeated times and paste text messages into 1
+  repeated.times <-  df.msg %>% group_by(time) %>% filter(n()>1)
+  repeated.times <- as.data.frame(repeated.times)
+  df.msg <- df.msg %>% distinct(time, .keep_all = TRUE)
+  for (t in unique(repeated.times$time)){
+    df.msg[df.msg$time == t,"text"] <- 
+      paste(repeated.times[repeated.times$time == t,"text"],collapse="; ")
+  }
+  df.msg <- df.msg %>% distinct(time, .keep_all = TRUE)
+  # add messages to main dataframe
+  df[df$time %in% df.msg$time,"SAMPLE_MESSAGE"] <- df.msg$text
+  return(as.data.frame(df))
+}
+
+#===============================================================================
+# This function discards trials having a signal loss higher than the 75 % of the
+# length
+#===============================================================================
+trial.length.check <- function(trial){
+  if(sum(rowSums(is.na(trial[,c('x','y')])) == 2) > nrow(trial)*0.75){
+    trial <- NULL
+  } else {
+    trial <- data.frame(unique(trial[,c('label','trial','subID')]))
+  }
+  trial
+} 
+
+x.equal <- function(df1,df2){
+  v <- do.call(paste0, df1) %in% do.call(paste0, df2)
+  return(v)
+}
+
+#===============================================================================
+# analysis
+# OUTPUT:
+# 1. A list containing:
+#     - the percentage of trials with saccades, no saccades and no signal
+#     - a line indicating the accuracy of trials without saccades
+# INPUTS:
+# 1.  saccades.db: saccades dataframe
+# 2.  blinks.db: blinks dataframe
+# 3.  subs: list of subjects to analyze
+# 4.  vfac: analyze saccades obtained at VFAC value
+# 5.  max_t_dur: minimum duration in ms for the saccades to analyze
+# 6.  amplitudefilt: minimum amplitude of the saccades to analyze
+# 7.  etr.db: whole EyeTracker database containing these columns:
+#      - "RECORDING_SESSION_LABEL"
+#      - "TRIAL_INDEX"
+#      - "lxdeg"
+#      - "lydeg"
+#      - "rxdeg"
+#      - "rydeg"
+#      - "subID" <- subject ID
+#      - "ecc" <- eccentricity values
+# 8.  EYE: write the eye to report -> 'left' or 'right'
+# 9.  logdir: log directory where behavioral responses are stored. They are .csv files
+# 10. writeyevents: set TRUE if you want to store the eye event on the csv log file
+# 11. varcond: name of the condition variable to analyze
+# 12. intlabelvarcond: number of the column where the varcond is
+# 13. levels.varcond: vector containing the name of each level of the varcond
+# 14. varcond2: same as 11 but for 2nd conditional variable
+# 15. intlabelvarcond2: number of the column where the varcond2 is
+
+analysis.def <- function(saccades.db, 
+                         blinks.db, 
+                         subs, 
+                         vfac,
+                         max_t_dur,
+                         amplitudefilt,
+                         etr.db, 
+                         EYE,
+                         logdir,
+                         writeyevents = TRUE,
+                         varcond,
+                         intlabelvarcond,
+                         levels.varcond,
+                         varcond2,
+                         intlabelvarcond2) {
+  tic("Start of the run")
+  identifiers <- c("label","trial","subID")
+  
+  if(missing(EYE)){
+    stop('Please, type right or left in the eye variable to start the analysis')
+  } else if(EYE=='right'){
+    xy <- c('rxdeg','rydeg')
+  } else if(EYE=='left'){
+    xy <- c('lxdeg','lydeg')
+  } else{
+    stop('Eye must be right or left')
+  } 
+  
+  # trials with signal and with no signal
+  trials <- etr.db[etr.db$subID %in% subs,
+                   c(xy,"RECORDING_SESSION_LABEL","TRIAL_INDEX","subID","ecc")]
+  names(trials) <- c('x','y','label','trial','subID','ecc')
+  list.trials.signal <- trials %>%
+    group_split(trial,subID) %>%
+    map_dfr(~trial.length.check(.x)) 
+  list.trials.signal <- unique(list.trials.signal[,identifiers])
+  list.trials <- unique(trials[,identifiers])
+  list.trials.nosignal <- list.trials[!(x.equal(list.trials,list.trials.signal)),]
+  
+  # get saccades
+  saccades <- saccades.db[saccades.db$subID %in% subs &
+                            saccades.db$VFAC == vfac & 
+                            saccades.db$eye == EYE,]
+  saccades <- saccades[x.equal(saccades[,identifiers],list.trials.signal),]
+  
+  saccades.above <- saccades[saccades$t_dur > max_t_dur |
+                               saccades$amp > amplitudefilt,]
+  trials.saccades.above <- unique(saccades.above[,identifiers])
+  saccades.below <- anti_join(saccades,saccades.above)
+  trials.saccades.below <- unique(saccades.below[!(x.equal(saccades.below[,identifiers],
+                                                           saccades.above[,identifiers])),
+                                                 identifiers])
+  # blinks
+  blinks <- blinks.db[blinks.db$subID %in% subs &
+                        blinks.db$VFAC == vfac & 
+                        blinks.db$eye == EYE,]
+  blinks <- blinks[x.equal(blinks[,identifiers],list.trials.signal),]
+  
+  trials.blinks <- unique(blinks[,identifiers])
+  trials.blinks <- unique(trials.blinks[!(x.equal(trials.blinks,
+                                                  trials.saccades.above)),])
+  
+  trials.saccades.below <- trials.saccades.below[!(x.equal(trials.saccades.below,
+                                                           trials.blinks)),
+                                                 identifiers]
+  
+  list.trials.clean <- list.trials.signal[!(x.equal(list.trials.signal,
+                                                    trials.saccades.above)) &
+                                            !(x.equal(list.trials.signal,
+                                                      trials.blinks)) &
+                                            !(x.equal(list.trials.signal,
+                                                      trials.saccades.below)),]
+  toc(log = TRUE)
+  
+  # BIG SANITY CHECK....
+  if(!nrow(list.trials) == nrow(list.trials.nosignal) + 
+     nrow(list.trials.clean) +
+     nrow(trials.saccades.below) + 
+     nrow(trials.saccades.above) + 
+     nrow(trials.blinks)){
+    stop('The number of trials is not equal to the sum of trials with saccades, 
+        with blinks, with no eye event and with high signal loss')
+  }  else{
+    cat(sprintf('The number of trials is equal to the sum of trials with saccades\n 
+  (n=%i below the threshold and n=%i beyond the threshold),\n
+  without eye event (n=%i), with blinks (n=%i) \n
+  and with high signal loss (n=%i) \n',
+                nrow(trials.saccades.below),
+                nrow(trials.saccades.above),
+                nrow(list.trials.clean),
+                nrow(trials.blinks),
+                nrow(list.trials.nosignal)))
+  }  
+  
+  # change \032 to º to make it identical to the csv outputs of the fMRI
+  list.trials$label <- gsub('\032','º',list.trials$label)
+  list.trials.nosignal$label <- gsub('\032','º',list.trials.nosignal$label)
+  list.trials.clean$label <- gsub('\032','º',list.trials.clean$label)
+  trials.saccades.below$label <- gsub('\032','º',trials.saccades.below$label)
+  trials.saccades.above$label <- gsub('\032','º',trials.saccades.above$label)
+  trials.blinks$label <- gsub('\032','º',trials.blinks$label)
+  
+  beh.db <- data.frame()
+  
+  for (sbj in subs) {
+    subjfiles <- grep(sbj,
+                      list.files(logdir,
+                                 pattern = "V2.csv",
+                                 full.names = TRUE), 
+                      value = TRUE)
+    
+    runs <- gsub(".*[_]([^.]+)[_].*", "\\1",subjfiles)
+    for (runx in runs){
+      
+      subjfile <- subjfiles[str_detect(subjfiles,runx)]
+      subjdata <- read.csv(subjfile, sep = ',', check.names = FALSE)
+      
+      clean <- list.trials.clean[list.trials.clean$subID == sbj,'label']
+      good.saccs <- trials.saccades.below[trials.saccades.below$subID == sbj,'label']
+      bad.saccs <- trials.saccades.above[trials.saccades.above$subID == sbj,'label']
+      nosignal <- list.trials.nosignal[list.trials.nosignal$subID == sbj, 'label']
+      blinks <- trials.blinks[trials.blinks$subID == sbj, 'label']
+      
+      subjdata$eyevent <- NA
+      subjdata[subjdata$image %in% clean,'eyevent'] <- 0
+      subjdata[subjdata$image %in% good.saccs,'eyevent'] <- 0
+      subjdata[subjdata$image %in% bad.saccs,'eyevent'] <- 1
+      subjdata[subjdata$image %in% nosignal,'eyevent'] <- 2
+      subjdata[subjdata$image %in% blinks,'eyevent'] <- 3
+      
+      if (writeyevents){
+        write.csv(subjdata, gsub('V2',paste0(EYE,'_eye_events'),subjfile),
+                  row.names = FALSE,
+                  quote = FALSE)
+      }
+      
+      # if all NA means that there's no etr data to classify each trial, so let's
+      # fill the rows with 4, which will be factored as 'None'
+      if (sum(is.na(subjdata$eyevent)) == nrow(subjdata)){
+        subjdata$eyevent <- 4
+      }
+      
+      subjdata <- subjdata[!subjdata$image == 'fixationDot.png',]
+      subjdata$subID <- sbj
+      subjdata$runID <- runx
+      
+      beh.db <- rbind(beh.db,subjdata)
+      # write_csv(subjdata, gsub('V2','saccades',subjfile))
+    }
+  }
+  beh.db$eyevent <- as.factor(beh.db$eyevent)
+  levels(beh.db$eyevent) <- list(nosacc  = 0, sacc = 1, 
+                                 null = 2, blink = 3,
+                                 None = 4)
+  
+  db.image <- strsplit(beh.db$image,"_")
+  beh.db[,varcond] <- sapply(db.image[c(1:length(db.image))],"[[",intlabelvarcond)
+  beh.db[,varcond2] <- sapply(db.image[c(1:length(db.image))],"[[",intlabelvarcond2)
+  beh.db[,varcond2] <- as.factor(beh.db[,varcond2])
+  
+  names(beh.db)[names(beh.db) == 'response time (ms)'] <- 'RT'
+  beh.db[is.na(beh.db$response),'response'] <- ' '
+  
+  beh.db[,varcond] <- factor(beh.db[,varcond], 
+                             levels = levels.varcond)
+  
+  var <- unique(beh.db[,varcond])
+  var2 <- unique(beh.db[,varcond2])
+  
+  percentage <- data.frame()
+  hcorrect.line <- data.frame()
+  
+  for (sbj in subs){
+    for(vr in var){
+      for (vr2 in var2){
+        aux <- beh.db[beh.db$subID == sbj &
+                        beh.db[,varcond]  == vr &
+                        beh.db[,varcond2] == vr2,]
+        
+        saccper <- (nrow(aux[aux$eyevent == 'sacc',]) / nrow(aux))*100
+        nullper <- (nrow(aux[aux$eyevent == 'null',]) / nrow(aux))*100
+        blinkper <- (nrow(aux[aux$eyevent == 'blink',]) / nrow(aux))*100
+        nosaccper <- (nrow(aux[aux$eyevent == 'nosacc',]) / nrow(aux))*100
+        
+        
+        aux.percentage <- data.frame(matrix(ncol=7,nrow=1))
+        aux.hcorrect.line <- data.frame(matrix(ncol=5,nrow=4))
+        
+        colnames(aux.percentage) <- c('subID',
+                                      'nullper',
+                                      'saccper',
+                                      'nosaccper',
+                                      'blinkper',
+                                      varcond,
+                                      varcond2)
+        
+        colnames(aux.hcorrect.line) <- c('subID',
+                                         'correctper',
+                                         varcond,
+                                         varcond2,
+                                         'variable')
+        
+        aux.percentage[,'subID'] <- sbj
+        aux.percentage[,'saccper']  <- saccper
+        aux.percentage[,'nosaccper'] <- nosaccper
+        aux.percentage[,'nullper'] <- nullper
+        aux.percentage[,'blinkper'] <- blinkper
+        aux.percentage[,varcond] <- vr
+        aux.percentage[,varcond2] <- vr2
+        
+        # 1 and 3 are trials with no saccade and with blinks respectively
+        responses <- aux[aux$eyevent %in% c('nosacc','blink'),]
+        
+        aux.hcorrect.line[,'subID'] <- sbj
+        aux.hcorrect.line[,'correctper'] <- c((sum(as.numeric((responses[,"response"]
+                                                               == responses[,"correct response"])))/nrow(aux))*100,NA,NA,NA)
+        # because stack is from 0 to 1
+        aux.hcorrect.line[,varcond] <- vr
+        aux.hcorrect.line[,varcond2] <- vr2
+        aux.hcorrect.line[,'variable'] <- c('nosaccper','saccper','nullper','blinkper')
+        
+        percentage <- rbind(percentage, aux.percentage)
+        hcorrect.line <- rbind(hcorrect.line, aux.hcorrect.line)
+        
+      }
+    }
+  }
+  
+  percentage.melted <- melt(percentage, id = c("subID",varcond,varcond2))
+  percentage.melted$variable <- factor(percentage.melted$variable, 
+                                       levels = c("nullper",
+                                                  "saccper",
+                                                  "blinkper",
+                                                  "nosaccper"))
+  
+  
+  percentage.melted$nelements <- factor(percentage.melted[,varcond], 
+                                        levels = levels.varcond)
+  
+  hcorrect.line$nelements <- factor(hcorrect.line$nelements, 
+                                    levels = levels.varcond)
+  
+  return(list(beh.db = beh.db,
+              percentage.melted = percentage.melted,
+              hcorrect.line = hcorrect.line))
+}
