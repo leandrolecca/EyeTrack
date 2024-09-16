@@ -1,6 +1,5 @@
 ---
 title: "run_eytrack"
-output: html_output
 ---
 
 ```{r setup, include=FALSE}
