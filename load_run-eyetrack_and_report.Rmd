@@ -1,0 +1,217 @@
+---
+title: "load_run-eytrack_and_report"
+---
+
+```{r setup, include=FALSE}
+rm(list=ls())
+
+require(dplyr)
+library(plyr)
+library(readr)
+library(dplyr)
+library(Cairo)
+library(reshape)
+library(ggplot2)
+library(ggpubr)
+library(MASS)
+library(ggforce)
+library(hrbrthemes)
+library(RColorBrewer)
+library(tidyverse)
+library(tools)
+library(pracma) 
+library(patchwork)
+library(iterators)
+library(parallel)
+library(foreach)
+library(doParallel)
+library(tictoc)
+library(trqwe)
+library(writexl)
+options(bitmapType = "cairo")
+
+basedir <- "/bcbl/home/home_g-m/llecca/Scripts/thalentproj/etr_analysis"
+setwd(basedir)
+source("eyetrack_toolbox.R")
+
+edf.data.basedir <- "/export/home/llecca/public/LEPA/sub_output/thalent_fMRI_2023_data_etr"
+```
+
+#===============================================================================
+# Set parameters for the eytrack analysis
+#===============================================================================
+
+```{r}
+subs <- grep("T",unique(basename(list.dirs(edf.data.basedir, recursive = FALSE))), 
+             value = TRUE)
+paradigms <- c("goal_oriented_paradigm","contextual_cueing_paradigm")
+
+MINDUR <- 10
+VFAC <- seq(6,10)
+SAMPLING <- 1000
+blink.threshold <- 20
+blink.window <- 100
+
+```
+
+#===============================================================================
+# Run the analysis (saccades, fixations and blinks detection) on the eyetracker 
+# database
+#===============================================================================
+
+```{r}
+# define an empty list to save the summary, fixations, saccades and blinks
+#-------------------------------------------------------------------------------
+result.db <- list(summary=c(),fixations=c(),blinks=c(),saccades=c())
+etr.db <- data.frame()
+
+# Now I use the run.participant function to get the events (blinks, fixations,
+# saccades) on every trial for each eye
+#-------------------------------------------------------------------------------
+for (pg in paradigms){
+  result.db <- list(summary=c(),fixations=c(),blinks=c(),saccades=c())
+  etr.db <- data.frame()
+  for (sbj in subs){
+    if (!file.exists(file.path(edf.data.basedir,sbj,pg,'etr_data.rds'))) next
+    
+    participant <- readRDS(file.path(edf.data.basedir,sbj,pg,'etr_data.rds'))
+    participant <- subset(participant, image == "Search")
+    
+    etr.db <- rbind(etr.db, participant)
+    
+    for (vfc in 1:length(VFAC)){
+      right.eye <- run.participant(participant,eye='right',SAMPLING,
+                                   blink.threshold,blink.window,MINDUR,VFAC[vfc])
+      left.eye <- run.participant(participant,eye='left',SAMPLING, 
+                                  blink.threshold,blink.window,MINDUR,VFAC[vfc])
+      
+      result.eyes <- mapply(rbind, left.eye,right.eye, SIMPLIFY=FALSE)
+      result.eyes <- mapply(cbind, result.eyes, "VFAC"= VFAC[vfc], SIMPLIFY=FALSE)
+      result.eyes <- mapply(cbind, result.eyes, "MINDUR"= MINDUR, SIMPLIFY=FALSE)
+      result.eyes <- mapply(cbind, result.eyes, "subID"= sbj, SIMPLIFY=FALSE)
+      
+      result.db <- mapply(rbind,result.db,result.eyes,SIMPLIFY=FALSE)
+    } 
+  }
+  saveRDS(etr.db, file = file.path(edf.data.basedir, paste0('etr-db_',pg,'_def.rds')))
+  saveRDS(result.db, file=file.path(edf.data.basedir, paste0('eyetrack-report_',pg,'_def.rds')))
+}
+```
+
+#===============================================================================
+# Now generate a report for the analysis
+# 1. First chunk loads and defines all the remaining necessary variables for the
+#    analysis
+# 2. Second chunk generates a report with the analysis function for both eyes
+#===============================================================================
+
+```{r}
+pg <- paradigms[1]
+#===============================================================================
+# # read raw data
+#===============================================================================
+etr.db <- mcreadRDS(file.path(edf.data.basedir,
+                              paste0('etr-db_',
+                                     pg,
+                                     '_def.rds')), 
+                    (parallel::detectCores() - 2))
+#===============================================================================
+# read eyetracking report
+#===============================================================================
+result.db <- readRDS(file.path(edf.data.basedir, 
+                               paste0('eyetrack-report_',pg,'_def.rds')))
+
+#===============================================================================
+# classify each trial with an eye event
+#===============================================================================
+vfac <- 6
+max_t_dur <- 40
+amplitudefilt <- 2
+logdir <- file.path("/export/home/llecca/public/LEPA/sub_output",pg)
+
+left.analysis <- analysis.def(saccades.db = result.db$saccades, 
+                              blinks.db = result.db$blinks, 
+                              subs = subs, 
+                              vfac = vfac, 
+                              max_t_dur = max_t_dur,
+                              amplitudefilt = 2,
+                              etr.db = etr.db, 
+                              EYE = 'left',
+                              logdir = logdir,
+                              writeyevents = FALSE,
+                              varcond = 'nelements',
+                              intlabelvarcond = 6,
+                              levels.varcond = c("L","M","H"),
+                              varcond2 = 'Condition',
+                              intlabelvarcond2 = 2)
+
+right.analysis <- analysis.def(saccades.db = result.db$saccades, 
+                               blinks.db = result.db$blinks, 
+                               subs = subs, 
+                               vfac = vfac, 
+                               max_t_dur = max_t_dur,
+                               amplitudefilt = 2,
+                               etr.db = etr.db, 
+                               EYE = 'right',
+                               logdir = logdir,
+                               writeyevents = FALSE,
+                               varcond = 'nelements',
+                               intlabelvarcond = 6,
+                               levels.varcond = c("L","M","H"),
+                               varcond2 = 'Condition',
+                               intlabelvarcond2 = 2)
+
+# beh.db <- left.analysis$beh.db
+left.percentage <- left.analysis$percentage.melted
+left.accuracy <- left.analysis$hcorrect.line
+left.percentage$eye <- 'left'
+left.accuracy$eye <- 'left'
+
+right.percentage <- right.analysis$percentage.melted
+right.accuracy <- right.analysis$hcorrect.line
+right.percentage$eye <- 'right'
+right.accuracy$eye <- 'right'
+
+both.eyes.percentage <- rbind(left.percentage, right.percentage)
+both.eyes.accuracy <- rbind(left.accuracy, right.accuracy)
+
+#===============================================================================
+# build the plots
+#===============================================================================
+plt.both.eyes.stacked <- 
+  ggplot(both.eyes.percentage[both.eyes.percentage$subID %in%
+                               subs[11:20],], 
+         aes(fill = variable, y = value, x =nelements)) +
+  geom_bar(position="stack", stat="identity")+
+  geom_hline(aes(yintercept=75),color='black',linetype=2, linewidth = 0.5) +
+  geom_errorbar(data = both.eyes.accuracy[both.eyes.accuracy$subID %in% 
+                                            subs[11:20],], 
+                aes(y=correctper,ymin=correctper, 
+                           ymax=correctper), 
+                color="black", linetype=1) + 
+  facet_grid(subID ~ Condition + eye) +
+  theme(panel.background = element_blank(), 
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank(), 
+        legend.key = element_rect(fill = "white"),
+        plot.title = element_text(hjust = 0.5),
+        text = element_text(size=18),
+        axis.text=element_text(size=14),
+        axis.title=element_text(),
+        legend.title = element_text(16),
+        strip.text = element_text(size=18)) +
+  guides(color=guide_legend(override.aes = list(size=2))) +
+  xlab("MUMBER OF ELEMENTS") + ylab("TRIALS [%]") +
+  scale_fill_manual(values = c("#619CFF","#F8766D","#018571","#00BA38"), 
+                    name = "Trials with:", 
+                    labels =c('No ETR data', 
+                              'Saccades', 
+                              'Blinks', 
+                              'No saccades'))
+
+ggsave(file=file.path(edf.data.basedir,
+                      'report',
+                      paste0(pg,'_both_eyes_40ms_2ang_VFAC=6_2_new.png')),
+       height=16,width=12,
+       plt.both.eyes.stacked)
+```
